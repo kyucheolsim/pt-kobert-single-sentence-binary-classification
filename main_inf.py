@@ -8,14 +8,14 @@ import gluonnlp as nlp
 from kobert.utils import get_tokenizer
 from kobert.pytorch_kobert import get_pytorch_kobert_model
 
-import KoBERTClassifier as kobert
+from KoBERTClassifier import BERTClassifier
 
 model_path = "./model-nsmc.pt"
 sample_path = "./sample.txt"
 device = "cpu"
 
 bertmodel, vocab = get_pytorch_kobert_model()
-model = kobert.BERTClassifier(bertmodel).to(device)
+model = BERTClassifier(bertmodel).to(device)
 checkpoint = torch.load(model_path)
 model.load_state_dict(checkpoint)
 model.eval()
