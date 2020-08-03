@@ -23,13 +23,13 @@ except:
 
 from KoBERTClassifier import calc_accuracy, BERTDataset, BERTClassifier
 
-DEBUG = True
+DEBUG = False
 
 ## Setting parameters
 max_len = 64
 batch_size = 64
 warmup_ratio = 0.1
-num_epochs = 15
+num_epochs = 5
 max_grad_norm = 1
 log_interval = 200
 learning_rate =  5e-5
@@ -37,11 +37,9 @@ model_path = "./model-nsmc.pt"
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+device = torch.device(device)
 print("device: ", device)
 print("device count: ", torch.cuda.device_count())
-
-device = torch.device("cuda")
-print("device: ", device)
 
 # download: pytorch_kobert(BertModel), tokenizer(vocab_file: pretrained subword tokenization model)
 # BertModel(transformers), nlp.vocab.BERTVocab.from_sentencepiece(vocab_file...)
@@ -51,9 +49,12 @@ print(vocab)
 print("vocab size: ", len(vocab))
 print("10 tokens: ", vocab.idx_to_token[:10])
 print("reserved tokens", vocab.reserved_tokens)
+#print("[UNK] index: ", vocab.token_to_idx['[UNK]'])
+#print("[PAD] index: ", vocab.token_to_idx['[PAD]'])
 
 #print("word embedding size: ", bertmodel.embeddings.word_embeddings.weight.size())
 #print("[0,:] embedding: ", bertmodel.embeddings.word_embeddings.weight[0, :5])
+#print("[1,:] embedding: ", bertmodel.embeddings.word_embeddings.weight[1, :5])
 #pad_idx = torch.LongTensor([0])
 #print("[0,:] embedding: ", bertmodel.embeddings.word_embeddings(pad_idx)[0, :5])
 
@@ -70,13 +71,15 @@ tok = nlp.data.BERTSPTokenizer(tokenizer, vocab, lower=False)
 #print(tok.convert_tokens_to_ids(sample_tokens))
 
 if DEBUG:
-	dataset_train = [['좋아요 good', '1'], ['별로에요', '0'], ['좋아 nice', '1'], ['별로', '0']]
-	dataset_test = [['좋아요', '1'], ['별로군', '0'], ['좋은듯', '1'], ['별로에요', '0']]
+	dataset_train = [['좋아요', '1'], ['별로에요', '0'], ['좋아 nice', '1'], ['별로', '0']]
+	dataset_test = [['좋아요, good', '1'], ['별로 bb', '0'], ['좋은듯', '1'], ['별로에요', '0']]
 	#print(tok(dataset_test[0][0]))
 else:
 	# id document label
 	dataset_train = nlp.data.TSVDataset("./data/ratings_train.txt", field_indices=[1,2], num_discard_samples=1)
 	dataset_test = nlp.data.TSVDataset("./data/ratings_test.txt", field_indices=[1,2], num_discard_samples=1)
+	print("train set: ", np.shape(dataset_train))
+	print("test set: ", np.shape(dataset_test))
 
 '''
 ## pair=True
@@ -87,6 +90,7 @@ else:
 
 data_train = BERTDataset(dataset_train, 0, 1, tok, max_len, True, False)
 data_test = BERTDataset(dataset_test, 0, 1, tok, max_len, True, False)
+
 
 train_dataloader = torch.utils.data.DataLoader(data_train, batch_size=batch_size, num_workers=4)
 test_dataloader = torch.utils.data.DataLoader(data_test, batch_size=batch_size, num_workers=4)
@@ -106,6 +110,7 @@ optimizer_grouped_parameters = [
 	{'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
 ]
 
+#print(np.shape(optimizer_grouped_parameters))
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
 loss_fn = nn.CrossEntropyLoss()
 t_total = len(train_dataloader) * num_epochs
@@ -152,6 +157,6 @@ for e in range(num_epochs):
 
 	if test_acc > best_acc:
 		best_acc = test_acc
-		torch.save(model.state_dict(), model_path)
+		torch.save({"best_acc": best_acc, "model_state_dic": model.state_dict()}, model_path)
 		print("* epoch {}, best acc {:.9f}".format(e+1, best_acc))
 
