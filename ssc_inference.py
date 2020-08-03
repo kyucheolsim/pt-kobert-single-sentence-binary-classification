@@ -10,21 +10,24 @@ from kobert.pytorch_kobert import get_pytorch_kobert_model
 
 from KoBERTClassifier import BERTClassifier
 
-model_path = "./model-nsmc.pt"
+max_len = 64
+model_path = "./model-nsmc-e5-a0.89.pt"
 sample_path = "./sample.txt"
 device = "cpu"
 
 bertmodel, vocab = get_pytorch_kobert_model()
 model = BERTClassifier(bertmodel).to(device)
 checkpoint = torch.load(model_path)
-model.load_state_dict(checkpoint)
-model.eval()
+model.load_state_dict(checkpoint['model_state_dic'])
+#model.load_state_dict(checkpoint)
 
+model.eval()
 tokenizer = get_tokenizer()
 tok = nlp.data.BERTSPTokenizer(tokenizer, vocab, lower=False)
-transform = nlp.data.BERTSentenceTransform(tok, max_seq_length=64, pad=True, pair=False)
+transform = nlp.data.BERTSentenceTransform(tok, max_seq_length=max_len, pad=True, pair=False)
 for sample in open(sample_path).readlines():
 	sample = sample.strip()
+	#print(tok(sample))
 	transformed = transform([sample])
 	(token_ids, valid_len, type_ids) = transformed
 	token_ids = torch.LongTensor(token_ids).unsqueeze(0).to(device)
@@ -33,4 +36,4 @@ for sample in open(sample_path).readlines():
 	output = model(token_ids, valid_len, type_ids)
 	#print(output.softmax(-1))
 	_, pred = torch.max(output, 1)
-	print("{} => {}".format(sample, pred.item()))
+	print("{}\t{}".format(sample, pred.item()))
