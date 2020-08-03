@@ -8,6 +8,12 @@ from torch.utils.data import Dataset, DataLoader
 import gluonnlp as nlp
 import numpy as np
 
+def calc_accuracy_sum(X, Y):
+	max_vals, max_indices = torch.max(X, 1)
+	train_acc = (max_indices == Y).sum().data.cpu().numpy()
+	return train_acc
+
+
 def calc_accuracy(X, Y):
 	max_vals, max_indices = torch.max(X, 1)
 	train_acc = (max_indices == Y).sum().data.cpu().numpy()/max_indices.size()[0]
